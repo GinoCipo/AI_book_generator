@@ -1,3 +1,4 @@
+import os
 from openai import OpenAI
 from tenacity import (
     retry,
@@ -5,9 +6,7 @@ from tenacity import (
     wait_random_exponential,
 )
 
-text = open('first output.txt', 'r').read().split("\n\n")
-
-client = OpenAI(api_key="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")
+client = OpenAI(api_key=os.environ["OPEN_AI_API"])
 
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
 def completion_with_backoff(**kwargs):
