@@ -1,13 +1,6 @@
 import json
 import os
-from openai import OpenAI
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_random_exponential,
-)  # for exponential backoff
-
-client = OpenAI(api_key=os.environ["OPEN_AI_API"])
+from main import client, completion_with_backoff
 
 def names_to_string(names):
     if len(names) == 0:
@@ -27,10 +20,6 @@ def parse_data(data):
         mindQuantity = len(data["Minds"])
         opener = f"Write the title for a book about {topic}. Book covers ideas from {minds}. Also, write the titles for: An introduction, {mindQuantity} chapters (describing the main ideas from the minds), final chapter remarking points in common between them and a conclusion. Answer in .json format: {{'title': (title), 'subtitles': [(all of the subtitles)] }}. Don't send ANYTHING besides .json response."
     return opener
-
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
-def completion_with_backoff(**kwargs):
-    return client.chat.completions.create(**kwargs)
 
 def gen_titles(opener):
     titles = completion_with_backoff(
@@ -53,7 +42,7 @@ def gen_book(titles):
             intro_completion = completion_with_backoff(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a skillful book writer."},
+                    {"role": "system", "content": f"You are a skillful book writer. With the task of writing a book titled {titles['title']}"},
                     {"role": "user", "content": intro_prompt}
                 ]
             )
@@ -64,7 +53,7 @@ def gen_book(titles):
             conclusion_completion = completion_with_backoff(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a skillful book writer."},
+                    {"role": "system", "content": f"You are a skillful book writer. With the task of writing a book titled {titles['title']}"},
                     {"role": "user", "content": conclusion_prompt}
                 ]
             )
@@ -75,22 +64,13 @@ def gen_book(titles):
             chapter_completion = completion_with_backoff(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "You are a skillful book writer."},
+                    {"role": "system", "content": f"You are a skillful book writer. With the task of writing a book titled {titles['title']}"},
                     {"role": "user", "content": chapter_prompt}
                 ]
             )
             contents.append(chapter_completion.choices[0].message.content)
     
     return contents
-
-def print_to_file(titles, contents):
-    with open(f"output/{titles["title"]}.txt", 'w') as f:
-        print(titles["title"], file=f)
-        print("\n", file=f)
-        for index, p in enumerate(contents):
-            print(titles['subtitles'][index], file=f)
-            print(p, file=f)
-            print("\n", file=f)
     
 if __name__ == "__main__":
     print("This module is used to generate the contents of the audiobook in english. This shall be used first.")
