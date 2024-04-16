@@ -6,7 +6,7 @@ from tenacity import (
     wait_random_exponential,
 )  # for exponential backoff
 
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="")
 
 def names_to_string(names):
     if len(names) == 0:
